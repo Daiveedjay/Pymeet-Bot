@@ -1,27 +1,14 @@
 from selenium import webdriver
-# Imports the main WebDriver class from the Selenium package, which allows for controlling and automating web browsers.
-
 from selenium.webdriver.common.by import By
-# Imports the 'By' class, which provides methods to select elements in web pages (e.g., by ID, class name, tag name, etc.).
-
 from selenium.webdriver.chrome.options import Options
-# Imports the 'Options' class specific to the Chrome WebDriver, which allows for customizing and setting preferences for the Chrome browser.
-
 from selenium.webdriver.support.ui import WebDriverWait
-# Imports the 'WebDriverWait' class, which allows for setting explicit waits, ensuring that certain conditions are met before proceeding.
-
 from selenium.webdriver.support import expected_conditions as EC
-# Imports the 'expected_conditions' module and renames it as 'EC'. This module provides a set of predefined conditions to use with WebDriverWait.
-
+from urllib.parse import urlparse
 import obsws_python as obs
-# Imports the 'obsws_python' module and renames it as 'obs'. This module provides functionalities to interact with the OBS Studio WebSockets plugin.
-
 import time
-# Imports the built-in 'time' module, which provides various time-related functions, like sleep.
 
 # Program start
 meet_link = input("Enter meet link: ")
-meet_time = int(input("Enter meet time in minutes. E.g 20, 30: "))
 
 # Initialize the Chrome WebDriver
 opt = Options()
@@ -44,7 +31,7 @@ def start_session():
     driver.get(meet_link)
 
     # Wait for the page to load
-    time.sleep(10)  # Adjust the wait time as needed
+    time.sleep(5)  # Adjust the wait time as needed
 
     # Find the input element for your name
     name_input = driver.find_element(By.TAG_NAME, "input")  # Assuming the input field has an ID attribute
@@ -61,19 +48,16 @@ def ask_to_join():
     ask_btn.click()
     print("Asked to join")
 
-def is_access_granted(driver):
+def is_access_granted():
     # Define a condition that checks for access to the Google Meet meeting
-    return "uqc-exyz-iic" in driver.page_source or "Asking to be let in" in driver.page_source
+    return "call_end" in driver.page_source
 
 def check_join():
     # Check if the bot is in the meeting some seconds later
-    element = WebDriverWait(driver, 10).until(
-        EC.any_of(is_access_granted)
-    )
+    while not (is_access_granted()):
+        time.sleep(5)
 
-    if element:
-        print(element)
-        print("In the call")
+    print("In the call")
 
 def mute_mic():
     mic_button = driver.find_elements(By.XPATH, '//div[@data-is-muted="false"]')[0]
@@ -84,8 +68,7 @@ def turn_cam():
     cam_button = driver.find_elements(By.XPATH, '//div[@data-is-muted="false"]')[1]
     cam_button.click()
 
-def record_meet(record_time):
-#   obs_server_ip = '192.168.12.168'
+def record_meet():
   obs_server_ip = 'localhost'
   obs_server_port = 4455
   obs_server_password = 'YRRhHglb6RhyMT5H'
@@ -95,11 +78,12 @@ def record_meet(record_time):
 
   input_list = cl.get_input_list()
 
+
   primary_source = ""
-  for input_l in input_list.inputs:
-    print(input_l)
-    if input_l["unversionedInputKind"] == "monitor_capture":
-      primary_source = input_l["inputName"]
+  for input in input_list.inputs:
+    # print(input["unversionedInputKind"])
+    if (input["unversionedInputKind"] == "pipewire-desktop-capture-source") or (input["unversionedInputKind"] == "monitor_capture"):
+      primary_source = input["inputName"]
   
   # Quit if no selected source
   if primary_source == "":
@@ -112,7 +96,23 @@ def record_meet(record_time):
     print(keys + " = " + str(getattr(source_active, keys)))
 
   cl.start_record()
-  time.sleep(record_time)
+  
+  while True:
+    # Check if the meeting has ended by examining the page's elements
+    if 'Meeting has ended' in driver.page_source:
+        break
+
+    # Check if the meeting has ended by examining the page's elements
+    if 'No one else is in this meeting' in driver.page_source:
+        break
+
+    # Check if you've been kicked out by examining the page's elements
+    if "You've been removed from the meeting" in driver.page_source:
+        break
+
+    time.sleep(5)  # Check conditions every 5 seconds
+
+
   cl.stop_record()
 
 start_session()
@@ -120,5 +120,5 @@ mute_mic()
 turn_cam()
 ask_to_join()
 check_join()
-record_meet(meet_time * 60)
+record_meet()
 driver.close()

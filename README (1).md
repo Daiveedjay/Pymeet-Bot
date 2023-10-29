@@ -11,11 +11,10 @@ Run the commands below
 pip install virtualenv
 
 
-# Based on terminal, bash === source, pmt === myenv nonsense
 # setup env
 virtualenv myenv
 source ./myenv/bin/activate # for linux/mac
-myenv\Scripts\activate # for windows
+source myenv/Scripts/activate # for windows
 
 # Install the programs dependencies
 pip install -r requirements.txt
